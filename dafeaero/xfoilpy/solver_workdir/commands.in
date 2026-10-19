@@ -1,0 +1,22 @@
+load ..\..\airfoils\foildatabase\SG6043.dat
+SG6043
+plop
+g f
+
+oper
+visc 300000
+M 0.1
+type 1
+vpar
+n 9
+
+iter 500
+pacc
+polar.dat
+
+aseq 0 20 0.5
+init
+aseq 0 -6 0.5
+
+
+quit
