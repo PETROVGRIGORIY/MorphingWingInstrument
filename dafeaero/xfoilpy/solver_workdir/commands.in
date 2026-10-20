@@ -1,11 +1,11 @@
-load ..\..\airfoils\foildatabase\task2\E205.dat
-E205
+load ..\..\airfoils\foildatabase\task2\SG6041.dat
+SG6041
 plop
 g f
 
 oper
-visc 2
-M 0.026239067055393587
+visc 277283
+M 0.04081632653061224
 type 1
 vpar
 n 9
@@ -14,7 +14,9 @@ iter 250
 pacc
 polar.dat
 
-aseq 0 5 1
+aseq 0 20 1
+init
+aseq 0 -5 1
 
 
 quit

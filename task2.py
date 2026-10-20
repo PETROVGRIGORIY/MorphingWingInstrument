@@ -20,13 +20,14 @@ def objective_cd_cruise(
 
     cy_max_estimate = 1.2 
     l = 1.0
-    Re_stall = 0.0
+    # Re_stall = 100000
 
     for _ in range(4):
         S = (2 * mass * g) / (density * V_stall**2 * cy_max_estimate)
         l = math.sqrt(S / AR)
         print(l)
-        Re_stall = da.aerodynamics.Re(V_stall, l, density)
+        Re_stall = da.aerodynamics.Re(V_stall, l)
+        print(Re_stall)
         
         cy_max_exact = af_characteristics.Cl_max(Re_stall, M_stall)
         print("Расчёт проведён")
@@ -34,7 +35,7 @@ def objective_cd_cruise(
             return None
         cy_max_estimate = cy_max_exact
 
-    Re_cruise = da.aerodynamics.Re(V_cruise, l, density)
+    Re_cruise = da.aerodynamics.Re(V_cruise, l)
     cy_max = af_characteristics.Cl_max(Re_stall, M_stall)
     cy_cruise = cy_max * (V_stall / V_cruise)**2
     

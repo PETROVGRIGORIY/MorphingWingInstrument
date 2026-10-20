@@ -51,7 +51,7 @@ class AirfoilCharacteristics():
         Расчёт в xfoil при ncr = 9, max_iter = 250,
         углы атаки в градусах: от -5 до 20 с шагом 1
         """
-        aseq = AnglesOfAttackSequence(0, 5, 1)
+        aseq = AnglesOfAttackSequence(-5, 20, 1)
         polar_df = self.compute_airfoil_polar(Re, M, 9, 250, aseq)
 
         if not isinstance(polar_df, pd.DataFrame) or polar_df.empty:
@@ -70,7 +70,7 @@ class AirfoilCharacteristics():
         """Рассчитывает Cx под заданный Cy. Если заданный Cy не достигается ни на одном
         из углов атаки от 0 до 20 градусов, бросается ValueError."""
 
-        aseq = AnglesOfAttackSequence(0, 5, 1)
+        aseq = AnglesOfAttackSequence(-5, 20, 1)
         polar_df = self.compute_airfoil_polar(Re, M, ncr, max_it, aseq)
         
         if not isinstance(polar_df, pd.DataFrame) or polar_df.empty:
