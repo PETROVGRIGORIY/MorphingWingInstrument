@@ -1,40 +1,4 @@
-from math import pi
 import math
-
-
-def Re(V, l, nu=1.5 * 10 ** (-5)):
-    '''Reynolds number calculation
-    :param V: Flow velocity
-    :param l: linear reference size
-    :param nu: Dynamic viscosity
-    :return: Reynolds number
-    :rtype: float
-    '''
-    return int(V * l / nu)
-
-
-def CL_required(V, S, m, rho=1.22):
-    '''wing level flight lift coefficient calculation
-    :param V: Airspeed
-    :param S: reference area (wing area)
-    :param m: mass (take-off mass)
-    :param rho: Air density
-    :return: CL
-    :rtype: float
-    '''
-    return (2 * m * 9.81 / (rho * V ** 2 * S))
-
-
-def CDi(CL, AR, osvald_coef=0.9):
-    '''induced drag calculation according to lift line theory
-    :param CL: lift coefficient
-    :param AR: wing aspect ratio
-    :param osvald_coef: Oswald efficiency number in induced drag coefficient formula by the lifting line theory.
-    Depends from wing plan form.
-    :return: CD induced
-    :rtype: float
-    '''
-    return (CL ** 2 / (pi * osvald_coef * AR))
 
 
 def wing_area(TOM, g, Density, take_off_speed, CL_take_off):
@@ -49,19 +13,13 @@ def wing_area(TOM, g, Density, take_off_speed, CL_take_off):
     return 2 * TOM * g / (Density * take_off_speed ** 2 * CL_take_off)
 
 
-def CL_cruise(TOM, cruise_speed, wing_area, g, Density):
-    '''From given mass, wing area and speed calculates lift coefficient of flight.
-    '''
-    return 2 * TOM * g / (Density * cruise_speed ** 2 * wing_area)
-
-
 def wingspan(AR, wing_area):
     '''Calculates wingspan from given aspect ratio and wing area.
     '''
     return (AR * wing_area) ** 0.5
 
 
-def ba(AR, wing_area):
+def mean_aerodynamic_chord(AR, wing_area):
     '''Calculates mean aerodynamic chord from given aspect ratio and wing area.
     '''
     return (wing_area / AR) ** 0.5
@@ -111,6 +69,7 @@ def P_cruise(TOM, K_cruise, eta_prop, g):
     :eta_prop: propeller efficiency coefficient for particular conditions.
     '''
     return TOM * g / (K_cruise * eta_prop)
+
 
 
 def wire_length(wingspan, l_stab, wire_scale_coef):

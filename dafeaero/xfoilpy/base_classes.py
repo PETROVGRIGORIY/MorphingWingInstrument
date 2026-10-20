@@ -2,12 +2,13 @@ from dataclasses import dataclass
 from pathlib import Path
 
 
-@dataclass
+@dataclass(frozen=True) #frozen для хеширования
 class Airfoil:
     name: str
     path: Path
 
-@dataclass
+
+@dataclass(frozen=True) #frozen для хеширования
 class AnglesOfAttackSequence:
     """Последовательность углов для проведения расчётов.
     alpha_first - Начальный угол атаки (может быть отрицательным).

@@ -1,5 +1,7 @@
 from pathlib import Path
 
+import pandas as pd
+
 from .base_classes import Airfoil, AnglesOfAttackSequence
 from .command_files import xfoil_command_aseq
 from .run_xfoil import run_xfoil
@@ -29,6 +31,35 @@ class AirfoilComparator:
     def add_airfoil(self, airfoil: Airfoil):
         self._airfoils.append(airfoil)
 
+    def _compute_polar(
+        self,
+        Re: float,
+        M: float,
+        ncr: int,
+        max_it: int,
+        aoas: AnglesOfAttackSequence,
+        airfoilname: str,
+    ) -> pd.DataFrame:
+        """Считает поляру aэродинамического профиля.
+        Возвращает DataFrame - конвертированный результат расчёта xfoil"""
+
+        airfoil = self._airfoil_search(airfoilname)
+
+        command_file_path = xfoil_command_aseq(
+            Re, M, aoas, ncr, max_it, airfoil.path, SOLVER_WORKIDR_PATH
+        )
+        polar_file_path = run_xfoil(
+            command_file_path, XFOIL_EXE_PATH, SOLVER_WORKIDR_PATH
+        )
+        polar_df, _ = parse_xfoil_polar(polar_file_path)
+
+        return (
+            polar_df
+            .drop_duplicates(subset='alpha')
+            .sort_values('alpha')
+            .reset_index(drop=True)
+        )
+
     def cl_alpha_plot(
         self,
         Re: float,
@@ -48,31 +79,11 @@ class AirfoilComparator:
             airfoilnames = (airfoilnames,)
 
         for name in airfoilnames:
-            try:
-                airfoil = self._airfoil_search(name)
-            except ValueError:
-                print(f"Профиль {name} не был найден, над ним не будет расчёта")
-                continue
-            command_file_path = xfoil_command_aseq(
-                Re, M, aoas, ncr, max_it, airfoil.path, SOLVER_WORKIDR_PATH
-            )
-            polar_file_path = run_xfoil(
-                command_file_path, XFOIL_EXE_PATH, SOLVER_WORKIDR_PATH
-            )
-            polar_df, _ = parse_xfoil_polar(polar_file_path)
-
-            # Сортируем по углу атаки и убираем дубликаты
-            polar_df = (
-                polar_df
-                .drop_duplicates(subset='alpha')   # убираем дубли по alpha
-                .sort_values('alpha')              # сортируем по возрастанию
-                .reset_index(drop=True)            # сбрасываем старый индекс
-            )
-
-            angles = polar_df['alpha'].to_numpy()
-            cl = polar_df['CL'].to_numpy()
+            polar_df = self._compute_polar(Re, M, ncr, max_it, aoas, name)
+            if not isinstance(polar_df, pd.DataFrame):
+                raise TypeError("Не удалось корректно вычислить поляру профиля")
             airfoils_data.append(
-                PlotData(name, angles, cl)
+                PlotData(name, polar_df['alpha'].to_numpy(), polar_df['CL'].to_numpy())
             )
         plots_to_comparison(
             airfoils_data, mode_of_comparison,
@@ -97,31 +108,11 @@ class AirfoilComparator:
             airfoilnames = (airfoilnames,)
 
         for name in airfoilnames:
-            try:
-                airfoil = self._airfoil_search(name)
-            except ValueError:
-                print(f"Профиль {name} не был найден, над ним не будет расчёта")
-                continue
-            command_file_path = xfoil_command_aseq(
-                Re, M, aoas, ncr, max_it, airfoil.path, SOLVER_WORKIDR_PATH
-            )
-            polar_file_path = run_xfoil(
-                command_file_path, XFOIL_EXE_PATH, SOLVER_WORKIDR_PATH
-            )
-            polar_df, _ = parse_xfoil_polar(polar_file_path)
-
-            # Сортируем по углу атаки и убираем дубликаты
-            polar_df = (
-                polar_df
-                .drop_duplicates(subset='alpha')   # убираем дубли по alpha
-                .sort_values('alpha')              # сортируем по возрастанию
-                .reset_index(drop=True)            # сбрасываем старый индекс
-            )
-
-            angles = polar_df['alpha'].to_numpy()
-            cl = polar_df['CD'].to_numpy()
+            polar_df = self._compute_polar(Re, M, ncr, max_it, aoas, name)
+            if not isinstance(polar_df, pd.DataFrame):
+                raise TypeError("Не удалось корректно вычислить поляру профиля")
             airfoils_data.append(
-                PlotData(name, angles, cl)
+                PlotData(name, polar_df['alpha'].to_numpy(), polar_df['CD'].to_numpy())
             )
         plots_to_comparison(
             airfoils_data, mode_of_comparison,

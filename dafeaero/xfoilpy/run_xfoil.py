@@ -6,7 +6,10 @@ from pathlib import Path
 import subprocess
 
 from .command_files import xfoil_command_cl
-from dafeaero.aerodynamics.base_functions import Re, ba, CL_required, CDi
+from dafeaero.aerodynamics.flow import Re
+from dafeaero.aerodynamics.aero_coefficients import Cl_required, Cd_induced
+from dafeaero.aerodynamics.aircraft_characteristics import mean_aerodynamic_chord
+
 
 
 class XFoilException(Exception):
@@ -104,7 +107,7 @@ def K_V_solver(Sw: float, foil_name: str, v: float, ar: float, tom: float,
     :rtype: Dataframe
     '''
     polar = np.array([])
-    xfoil_command_cl(Re(v, ba(ar, Sw), nu), CL_required(v, Sw, tom),
+    xfoil_command_cl(Re(v, mean_aerodynamic_chord(ar, Sw), nu), Cl_required(v, Sw, tom),
                      M, ncr, xfoil_max_it, XFoil_path, work_path, foil_name)
     run_xfoil(work_path, XFoil_path)
     polar = np.append(polar, XFoil_read(work_path))
@@ -114,7 +117,7 @@ def K_V_solver(Sw: float, foil_name: str, v: float, ar: float, tom: float,
     POLAR.insert(0, "AR", ar)
     POLAR.insert(1, "V", v)
 
-    POLAR.insert(5, "CDi", CDi(POLAR.CL, ar, osvald_coef=Osvald_c))
+    POLAR.insert(5, "CDi", Cd_induced(POLAR.CL, ar, osvald_coef=Osvald_c))
     POLAR.insert(6, "K", POLAR.CL / (POLAR.CD + POLAR.CDi))
 
     return POLAR
