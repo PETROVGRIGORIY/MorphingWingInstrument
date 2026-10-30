@@ -1,0 +1,12 @@
+load ..\foildatabase\task3\CLARK-Y.dat
+CLARK-Y
+gdes
+flap
+0.75
+999
+10
+1
+exec
+
+psav CLARK-Y_flap_10.dat
+quit

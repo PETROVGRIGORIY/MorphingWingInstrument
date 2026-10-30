@@ -1,0 +1,12 @@
+load ..\foildatabase\task3\goe346.dat
+goe346
+gdes
+flap
+0.75
+999
+10
+1
+exec
+
+psav goe346_flap_10.dat
+quit

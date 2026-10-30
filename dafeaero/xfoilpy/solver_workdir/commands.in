@@ -1,10 +1,15 @@
-load ..\..\airfoils\foildatabase\task2\SG6041.dat
+load ..\..\airfoils\foildatabase\task3\SG6041.dat
 SG6041
+pane
+ppar
+n 121
+
+
 plop
 g f
 
 oper
-visc 277283
+visc 235926
 M 0.04081632653061224
 type 1
 vpar

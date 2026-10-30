@@ -1,4 +1,6 @@
 import os
+import sys
+
 import numpy as np
 import pandas as pd
 
@@ -47,18 +49,30 @@ def run_xfoil(
     # Удаляем старую поляру, чтобы XFOIL не дописывал в неё новые данные
     polar_path = work_dir / "polar.dat"
     polar_path.unlink(missing_ok=True)
-    
-    # Формируем команду с перенаправлением stdin (<).
-    command = f'"{exe}" < "{cmd_file.name}"'
+
+    # Создаем STARTUPINFO и приказываем скрыть ненужное нам графическое окно Xfoil
+    startupinfo = subprocess.STARTUPINFO()
+    startupinfo.dwFlags |= subprocess.STARTF_USESHOWWINDOW
+    startupinfo.wShowWindow = subprocess.SW_HIDE
     
     # Запускаем процесс
-    result = subprocess.run(
-        command,
-        shell=True,
-        cwd=work_dir,
-        stdout=subprocess.DEVNULL, # XFOIL выводит много бесполезного текста
-        stderr=subprocess.PIPE
-    )
+    with open(cmd_file, 'r') as f_in:
+        result = subprocess.run(
+            [str(exe)],
+            stdin=f_in,
+            cwd=work_dir,
+            stdout=subprocess.DEVNULL, 
+            stderr=subprocess.PIPE,
+            startupinfo=startupinfo,
+            creationflags = subprocess.CREATE_NO_WINDOW,
+            timeout = 60
+        )
+
+        if result.returncode != 0:
+            raise ValueError(
+                f"XFOIL завершился с кодом {result.returncode}. \
+                Ошибки: {result.stderr.decode()}"
+            )
 
     return polar_path
 
