@@ -15,8 +15,8 @@ def objective_cd_cruise(
     density = 1.225
     g = 9.81
 
-    M_cruise = da.aerodynamics.M(V_cruise, 343)
-    M_stall = da.aerodynamics.M(V_stall, 343)
+    M_cruise = da.aerodynamics.mach(V_cruise, 343)
+    M_stall = da.aerodynamics.mach(V_stall, 343)
 
     cy_max_estimate = 1.2 
     l = 1.0
@@ -26,7 +26,7 @@ def objective_cd_cruise(
         S = (2 * mass * g) / (density * V_stall**2 * cy_max_estimate)
         l = math.sqrt(S / AR)
         print(l)
-        Re_stall = da.aerodynamics.Re(V_stall, l)
+        Re_stall = da.aerodynamics.re(V_stall, l)
         print(Re_stall)
         
         cy_max_exact = af_characteristics.Cl_max(Re_stall, M_stall)
@@ -35,7 +35,7 @@ def objective_cd_cruise(
             return None
         cy_max_estimate = cy_max_exact
 
-    Re_cruise = da.aerodynamics.Re(V_cruise, l)
+    Re_cruise = da.aerodynamics.re(V_cruise, l)
     cy_max = af_characteristics.Cl_max(Re_stall, M_stall)
     cy_cruise = cy_max * (V_stall / V_cruise)**2
     

@@ -26,7 +26,12 @@
     ...
 
 """
+from .aeroconsts import *
+from .facade.airfoil import Airfoil
+from .facade.polar import Polar
 
 from . import aerodynamics
-from . import airfoils
+from . import airfoil_geometry
 from . import xfoilpy
+
+from .xfoilpy.base_classes import AnglesOfAttackSequence

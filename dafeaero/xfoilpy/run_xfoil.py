@@ -8,7 +8,7 @@ from pathlib import Path
 import subprocess
 
 from .command_files import xfoil_command_cl
-from dafeaero.aerodynamics.flow import Re
+from dafeaero.aerodynamics.flow import re
 from dafeaero.aerodynamics.aero_coefficients import Cl_required, Cd_induced
 from dafeaero.aerodynamics.aircraft_characteristics import mean_aerodynamic_chord
 
@@ -121,7 +121,7 @@ def K_V_solver(Sw: float, foil_name: str, v: float, ar: float, tom: float,
     :rtype: Dataframe
     '''
     polar = np.array([])
-    xfoil_command_cl(Re(v, mean_aerodynamic_chord(ar, Sw), nu), Cl_required(v, Sw, tom),
+    xfoil_command_cl(re(v, mean_aerodynamic_chord(ar, Sw), nu), Cl_required(v, Sw, tom),
                      M, ncr, xfoil_max_it, XFoil_path, work_path, foil_name)
     run_xfoil(work_path, XFoil_path)
     polar = np.append(polar, XFoil_read(work_path))

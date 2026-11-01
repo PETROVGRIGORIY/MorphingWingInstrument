@@ -2,7 +2,7 @@ import math
 R_AIR = 287.05  # удельная газовая постоянная воздуха
 
 
-def Re(
+def re(
     velocity: float | int,
     length: float | int,
     kinematic_viscosity: float | int = 1.5e-5,
@@ -16,7 +16,7 @@ def Re(
     return int(velocity * length / kinematic_viscosity)
 
 
-def speed_of_sound(
+def sound_speed(
     temperature: float | int,
     gamma: float = 1.4,
     gas_constant: float = R_AIR,
@@ -31,7 +31,7 @@ def speed_of_sound(
     return math.sqrt(gamma * gas_constant * temperature)
 
 
-def M(
+def mach(
     velocity: float | int,
     speed_of_sound: float | int,
 ) -> float:

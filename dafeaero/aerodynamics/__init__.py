@@ -1,5 +1,5 @@
 from dafeaero.aerodynamics.flow import (
-    Re, M, speed_of_sound
+    re, mach, sound_speed
 )
 
 from dafeaero.aerodynamics.aero_coefficients import(

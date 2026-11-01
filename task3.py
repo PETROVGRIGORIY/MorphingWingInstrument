@@ -32,7 +32,7 @@ def find_optimal_flap_angle(
         flapped_foil_path = TASK_DATA_PATH / f"{foil.stem}_flap_{angle}.dat"
 
         try:
-            da.airfoils.add_flap_to_airfoil(
+            da.airfoil_geometry.add_flap_to_airfoil(
                 flap_angle=angle,
                 hinge_position=hinge_position,
                 airfoil_path=foil,
@@ -45,7 +45,7 @@ def find_optimal_flap_angle(
         flapped_af = da.xfoilpy.Airfoil(f"{foil.stem}_flap_{angle}", flapped_foil_path)
         af_char = da.xfoilpy.AirfoilCharacteristics(flapped_af)
         
-        M_stall = da.aerodynamics.M(V_stall, 343)
+        M_stall = da.aerodynamics.mach(V_stall, 343)
 
         cy_max_estimate = 1.5 # Начальное приближение для закрылка
         chord = 1.0
@@ -57,7 +57,7 @@ def find_optimal_flap_angle(
                 chord = math.sqrt(S / AR)
                 
                 # 2. Считаем Re
-                Re_stall = da.aerodynamics.Re(V_stall, chord)
+                Re_stall = da.aerodynamics.re(V_stall, chord)
                 
                 # 3. Запрашиваем новый Cy_max
                 cy_max_exact = af_char.Cl_max(Re_stall, M_stall)
@@ -100,8 +100,8 @@ def objective_cd_cruise(
     S = (2 * mass * g) / (density * V_stall**2 * cy_max_flap)
     chord = math.sqrt(S / AR)
     
-    M_cruise = da.aerodynamics.M(V_cruise, 343)
-    Re_cruise = da.aerodynamics.Re(V_cruise, chord)
+    M_cruise = da.aerodynamics.mach(V_cruise, 343)
+    Re_cruise = da.aerodynamics.re(V_cruise, chord)
     
     # Потребный Cy на крейсере
     cy_cruise = (2 * mass * g) / (density * V_cruise**2 * S)
