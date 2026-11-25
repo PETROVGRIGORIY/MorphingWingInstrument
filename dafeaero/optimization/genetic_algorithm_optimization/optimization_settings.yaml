@@ -1,0 +1,18 @@
+# Настройки генетического алгоритма
+genetic_algorithm:
+  num_generations: 10 # Количество поколений.
+  num_parents_mating: 12 # Сколько особей скрещиваются.
+  sol_per_pop: 24 # В популяции столько особей.
+  parent_selection_type: 'tournament'
+  K_tournament: 3 # В турнире участвует столько особей.
+  keep_elitism: 2 # В следующее поколение переходят столько лучших из предыдущего.
+  crossover_probability: 0.7 #Пороговое значение для того, чтобы предок был выбран для скрещивания.
+  crossover_type: "scattered"
+
+  mutation_type: 'random'  
+  mutation_by_replacement: true
+  mutation_probability: 0.1
+
+  stop_criteria: ['saturate_5']
+  seed: 44 # seed для генерации нулевого поколения
+  threads: 6

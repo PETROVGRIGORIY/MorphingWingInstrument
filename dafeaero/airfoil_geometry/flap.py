@@ -4,7 +4,7 @@ from pathlib import Path
 import numpy as np
 
 from ..config import XFOIL_EXE_PATH
-from .foil_parametrs import write_foil_file, parse_foil_file
+from .foil_file import write_foil_file, parse_foil_file
 from ..xfoilpy.run_xfoil import run_xfoil
 
 

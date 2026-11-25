@@ -31,7 +31,7 @@ def _as_coords(coords: ArrayLike) -> np.ndarray:
 
 
 class Airfoil:
-    """Многофункциональный класс для работы с аэродинамическим профилем,
+    """Многофункциональный класс для работы с **аэродинамическим профилем**,
     способный работать с точками контура, вычислять геометрические характеристики,
     запускать расчёт аэродинамической поляры на заданном режиме.
     Хранит неизменяемый контур координат (x/c, y/c).
@@ -67,9 +67,9 @@ class Airfoil:
         return cls(geometry.parse_foil_file(path), name=name or path.stem)
 
     @classmethod
-    def naca(cls, code: str, n_points: int = 161, closed_te: bool = True) -> Airfoil:
+    def naca(cls, code: str, n_points: int = 161) -> Airfoil:
         """Профиль NACA по цифровому коду, например Airfoil.naca("2412")."""
-        return cls(geometry.naca(code, n_points, closed_te), name=f"NACA {code}")
+        return cls(geometry.generate_naca(code, n_points), name=f"NACA {code}")
 
     # Данные
     @property

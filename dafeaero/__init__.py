@@ -29,9 +29,13 @@
 from .aeroconsts import *
 from .facade.airfoil import Airfoil
 from .facade.polar import Polar
+from .facade.airfoil_comparator import AirfoilComparator
+
+from .service.parametr_sequence import ParameterSequence
 
 from . import aerodynamics
 from . import airfoil_geometry
 from . import xfoilpy
+from . import optimization
 
 from .xfoilpy.base_classes import AnglesOfAttackSequence

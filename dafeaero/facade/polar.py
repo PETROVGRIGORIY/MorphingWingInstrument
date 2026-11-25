@@ -102,7 +102,13 @@ class Polar:
 
     @property
     def cd_min(self) -> float:
+        """Минимальный коэффициент сопротивления CD_min поляры"""
         return float(self._df["CD"].min())
+
+    @property
+    def cd_min_alpha(self) -> float:
+        """Угол атаки (alpha), при котором достигается CD_min"""
+        return float(self._df["alpha"].iloc[self._cd_min_index()])
 
     @property
     def ld_max(self) -> float:

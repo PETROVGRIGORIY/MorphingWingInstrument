@@ -5,13 +5,13 @@ import numpy as np
 import pandas as pd
 
 from pathlib import Path
-import subprocess
 
 from .command_files import xfoil_command_cl
 from dafeaero.aerodynamics.flow import re
 from dafeaero.aerodynamics.aero_coefficients import Cl_required, Cd_induced
 from dafeaero.aerodynamics.aircraft_characteristics import mean_aerodynamic_chord
-
+from .hidden_process import run_hidden
+from ..config import XFOIL_TIMEOUT
 
 
 class XFoilException(Exception):
@@ -50,29 +50,9 @@ def run_xfoil(
     polar_path = work_dir / "polar.dat"
     polar_path.unlink(missing_ok=True)
 
-    # Создаем STARTUPINFO и приказываем скрыть ненужное нам графическое окно Xfoil
-    startupinfo = subprocess.STARTUPINFO()
-    startupinfo.dwFlags |= subprocess.STARTF_USESHOWWINDOW
-    startupinfo.wShowWindow = subprocess.SW_HIDE
-    
-    # Запускаем процесс
-    with open(cmd_file, 'r') as f_in:
-        result = subprocess.run(
-            [str(exe)],
-            stdin=f_in,
-            cwd=work_dir,
-            stdout=subprocess.DEVNULL, 
-            stderr=subprocess.PIPE,
-            startupinfo=startupinfo,
-            creationflags = subprocess.CREATE_NO_WINDOW,
-            timeout = 60
-        )
-
-        if result.returncode != 0:
-            raise ValueError(
-                f"XFOIL завершился с кодом {result.returncode}. \
-                Ошибки: {result.stderr.decode()}"
-            )
+    code = run_hidden(exe, cmd_file, work_dir, timeout=XFOIL_TIMEOUT)
+    if code != 0:
+        raise ValueError(f"XFOIL завершился с кодом {code}.")
 
     return polar_path
 
