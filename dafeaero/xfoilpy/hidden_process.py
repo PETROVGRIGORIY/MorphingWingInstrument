@@ -85,6 +85,7 @@ def run_hidden(exe: str | Path, stdin_path: str | Path, cwd: str | Path, timeout
             try:
                 if _k32.WaitForSingleObject(pi.hProcess, int(timeout * 1000)) == _WAIT_TIMEOUT:
                     _k32.TerminateProcess(pi.hProcess, 1)
+                    _k32.WaitForSingleObject(pi.hProcess, 5000)
                     raise subprocess.TimeoutExpired(str(exe), timeout)
                 code = wintypes.DWORD()
                 _k32.GetExitCodeProcess(pi.hProcess, ctypes.byref(code))

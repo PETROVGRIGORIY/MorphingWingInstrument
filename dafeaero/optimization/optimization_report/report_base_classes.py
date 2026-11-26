@@ -43,7 +43,7 @@ class OptimizationReport():
             
             # 1. Сначала соберем краткую сводную таблицу
             for report in self._airfoil_reports:
-                name = report._report_data.get("name", "Unknown")
+                name = report._report_data.airfoil.name
                 val = f"{report._objective_value:.4f}"
                 final_md_content += f"| {name} | {val} |\n"
             

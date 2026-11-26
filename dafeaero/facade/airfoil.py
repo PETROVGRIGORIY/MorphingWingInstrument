@@ -169,7 +169,7 @@ class Airfoil:
             return self._polars[key]
 
         # Отдельная временная папка на каждый расчёт: нет конфликтов при параллельных запусках
-        with tempfile.TemporaryDirectory() as tmp:
+        with tempfile.TemporaryDirectory(ignore_cleanup_errors=True) as tmp:
             workdir = Path(tmp)
             dat = workdir / "airfoil.dat"
             geometry.write_foil_file(dat, self._coords, self._name)

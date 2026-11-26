@@ -79,8 +79,8 @@ def _calc_cruise_drag(
 
 
 def evaluate_airfoil_drag(
-        af: "Airfoil", 
-        settings: MinCruiseDragOptSettings
+    af: "Airfoil", 
+    settings: MinCruiseDragOptSettings
     ) -> MinCruiseDragResult:
     """Целевая функция для оценки сопротивления профиля на крейсере.
     
@@ -92,10 +92,12 @@ def evaluate_airfoil_drag(
     best_flap_angle = None
     best_hinge_x = None
 
-    # ОБРАБОТАТЬ NONE в параметрах закрылка!!!!
     # 1. Перебор конфигураций закрылка (шарниры x углы)
-    for hinge_x in settings.flap_settings.hinge_positions:
-        for angle in settings.flap_settings.angles:
+    flap = settings.flap_settings
+    hinges = flap.hinge_positions if flap is not None else [0.0]
+    angles = flap.angles if flap is not None else [0]
+    for hinge_x in hinges:
+        for angle in angles:
             try:
                 # Если угол 0, закрылок не отклоняем (берем чистый профиль)
                 flapped_af = af.with_flap(angle, hinge_x) if angle != 0 else af

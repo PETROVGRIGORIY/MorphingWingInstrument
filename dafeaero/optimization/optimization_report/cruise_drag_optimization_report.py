@@ -4,7 +4,7 @@ from pathlib import Path
 import matplotlib.pyplot as plt
 
 from .report_base_classes import AirfoilReport
-from ..objective_functions.cruise_drag_evaluation import MinCruiseDragResult
+from ..optimization_definition import MinCruiseDragResult
 
 
 class MinCruiseDragAirfoilReport(AirfoilReport):
@@ -41,7 +41,8 @@ class MinCruiseDragAirfoilReport(AirfoilReport):
             md += "**Статус:** Расчет не удался, сопротивление не было расчитано\n\n"
         else:
             md += f"**Сопротивление (X):** {res.drag_X:.4f} Н\n\n"
-            md += f"**Лучший угол закрылка:** {res.best_angle}° (Cy_max = {res.best_cy_max:.3f})\n\n"
+            md += f"**Лучший угол закрылка:** {res.best_flap_angle}° \
+            (Cy_max = {res.best_cl_max:.3f})\n\n"
         
         #Геометрия профиля
         md += f"Толщина {af.thickness:.4f} (x/c = {af.thickness_position:.3f}), "

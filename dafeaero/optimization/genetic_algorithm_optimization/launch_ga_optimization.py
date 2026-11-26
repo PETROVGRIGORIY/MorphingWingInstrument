@@ -23,7 +23,7 @@ def _load_settings(path: Path) -> dict:
 
 
 def parse_gene_space(
-    gene_space: tuple[list|tuple|ParameterSequence]) -> tuple[list, list[type]]:
+    gene_space: tuple[list|tuple|ParameterSequence, ...]) -> tuple[list, list[type]]:
     """
     Преобразует пользовательское описание пространства генов в формат, 
     понятный для PyGAD.
@@ -79,10 +79,11 @@ def parse_gene_space(
 
 
 def launch_ga_optimization(
-    generate_airfoil: Callable[..., Airfoil],
-    gene_space: tuple[list|tuple|ParameterSequence],
     objective_function: ObjectiveFunction,
     optimization_settings: OptimizationSettings,
+    generate_airfoil: Callable[..., Airfoil],
+    gene_space: tuple[list|tuple|ParameterSequence, ...],
+    deformate_airfoil,
     config_filename: str = "optimization_settings.yaml"
 ) -> dict:
     """
