@@ -15,4 +15,3 @@ genetic_algorithm:
 
   stop_criteria: ['saturate_5']
   seed: 44 # seed для генерации нулевого поколения
-  threads: 6

@@ -1,19 +1,16 @@
 import yaml
 import pygad
 
-import logging
 from pathlib import Path
 
-from typing import Callable
-
 from ..optimization_definition import (
-    ObjectiveFunction, OptimizationSettings, MinCruiseDragOptSettings
+    ObjectiveFunction,
+    OptimizationSettings, MinCruiseDragOptSettings,
+    AirfoilGenerationStrategy, AirfoilDeformationStrategy
 )
-from .ga_components.fitness_evaluator import make_fitness_function
+from ..optimization_report.genetic_algorithm_report import generate_ga_report
+from .fitness_evaluator import make_fitness_function
 from ...service.parametr_sequence import ParameterSequence
-from ...facade.airfoil import Airfoil
-
-logger = logging.getLogger(__name__)
 
 
 def _load_settings(path: Path) -> dict:
@@ -81,64 +78,91 @@ def parse_gene_space(
 def launch_ga_optimization(
     objective_function: ObjectiveFunction,
     optimization_settings: OptimizationSettings,
-    generate_airfoil: Callable[..., Airfoil],
-    gene_space: tuple[list|tuple|ParameterSequence, ...],
-    deformate_airfoil,
+    generation_strategy: AirfoilGenerationStrategy,
+    deformate_strategy: AirfoilDeformationStrategy | None = None,
+    threads: int = 1,
+    report_path: Path | None = None,
     config_filename: str = "optimization_settings.yaml"
 ) -> dict:
     """
-    Запускает генетический алгоритм (PyGAD) для поиска оптимального 
+    Запускает генетический алгоритм (PyGAD) для поиска оптимального
     аэродинамического профиля на основе заданной целевой функции.
-    
+
     Функция выполняет полный цикл оптимизации:
     1. Загружает гиперпараметры ГА из YAML-файла.
-    2. Парсит пространство генов и определяет их типы (int или float).
-    3. Проверяет соответствие переданных настроек выбранной целевой функции.
-    4. Инициализирует и запускает PyGAD, скрывая логику расчета за функцией фитнеса.
-    5. Возвращает словарь с лучшим найденным решением.
-    
+    2. Парсит пространство параметров стратегии генерации.
+    3. Проверяет соответствие настроек выбранной целевой функции.
+    4. Инициализирует и запускает PyGAD, скрывая логику расчёта
+    и перебора деформаций за функцией приспособленности.
+    5. Выполняет итоговый расчёт лучшего найденного профиля.
+    6. Возвращает словарь с результатами оптимизации.
+
     Пример использования:
-        gene_space = (
-            (0, 7),                     # кривизна NACA
-            (1, 8),                     # положение кривизны
-            ParameterSequence(6, 15)    # толщина
-        )
-        settings = MinCruiseDragOptSettings(9, 14, 5, 9, 0.85)
-        
-        result = launch_ga_optimization(
-            generate_airfoil=lambda a,b,c: Airfoil.naca(f"{a}{b}{c:02d}"),
-            gene_space=gene_space,
-            objective_function=ObjectiveFunction.MIN_CRUISE_DRAG,
-            optimization_settings=settings
+        generation_strategy = AirfoilGenerationStrategy(
+            generate_airfoil=lambda a, b, c: Airfoil.naca(f"{a}{b}{c:02d}"),
+            parameter_space=(
+                (0, 7),
+                (1, 8),
+                ParameterSequence(6, 15)
+            )
         )
 
-    :param generate_airfoil: Функция-фабрика, которая принимает значения генов 
-        (например, параметры NACA) и возвращает готовый объект Airfoil.
-    :param gene_space: Кортеж, содержащий описания генов. Каждый элемент может быть:
-        - list: явный список допустимых значений.
-        - tuple из 2 элементов: диапазон [min, max]. 
-        - ParameterSequence: объект, содержащий последовательность значений.
-    :param objective_function: Enum, определяющий цель оптимизации 
+        deformate_strategy = AirfoilDeformationStrategy(
+            deformate_airfoil=lambda af, angle, hinge_x: af.with_flap(angle, hinge_x),
+            parameter_space=(
+                ParameterSequence(5, 35, 5),
+                ParameterSequence(0.75)
+            )
+        )
+
+        settings = MinCruiseDragOptSettings(9, 14, 5, 9, 0.85)
+
+        result = launch_ga_optimization(
+            objective_function=ObjectiveFunction.MIN_CRUISE_DRAG,
+            optimization_settings=settings,
+            generation_strategy=generation_strategy,
+            deformate_strategy=deformate_strategy
+        )
+
+    :param objective_function: Enum, определяющий цель оптимизации
         (например, MIN_CRUISE_DRAG).
-    :param optimization_settings: Датакласс с физическими параметрами среды 
-        (скорости, масса, удлинение крыла) и настройками перебора механизации.
-    :param config_filename: Имя YAML-файла с настройками ГА (популяция, мутации, 
-        скрещивание), который лежит в той же директории, что и этот скрипт.
-    
+    :param optimization_settings: Датакласс с физическими параметрами
+        задачи (скорости, масса аппарата, удлинение крыла и др.).
+    :param generation_strategy: Стратегия генерации исходного профиля,
+        содержащая функцию генерации и пространство её параметров.
+    :param deformate_strategy: Стратегия деформации профиля,
+        содержащая функцию деформации и пространство её параметров.
+        Если None, расчёт выполняется без деформации профиля.
+    :param threads: Число потоков расчёта.
+        Профили распределяются между потоками.
+    :param report_path: Путь сохранения отчёта (.pdf или .md).
+        Если None, отчёт не формируется.
+    :param config_filename: Имя YAML-файла с настройками ГА
+        (популяция, мутации, скрещивание), который лежит
+        в той же директории, что и этот скрипт.
+
     :return: Словарь с результатами оптимизации:
-             1. genes (list): Лучшая комбинация генов.
-             2. airfoil (Airfoil): Объект профиля, созданный из лучших генов.
-             3. fitness (float): Лучшее значение функции приспособленности.
-             4. drag_X (float): Вычисленное сопротивление (в Ньютонах).
-             5. ga_instance (pygad.GA): Объект PyGAD для анализа сходимости и графиков.
+            1. genes (list): Лучшая комбинация генов.
+            2. fitness (float): Лучшее значение функции приспособленности.
+            3. result (MinCruiseDragResult): Результат аэродинамического
+                расчёта оптимального профиля, содержащий:
+                    - airfoil: Исходный профиль.
+                    - drag_X: Размерное сопротивление на крейсере (Н).
+                    - cd_clmax_ratio: Отношение Cd_cruise / Cl_max.
+                    - best_cl_max: Cl_max оптимальной конфигурации.
+                    - best_deformation: Оптимальные параметры деформации.
+            4. ga_instance (pygad.GA): Объект PyGAD для анализа
+                сходимости и построения графиков.
     :rtype: dict
-    
-    :raises FileNotFoundError: Если файл конфигурации `config_filename` не найден.
-    :raises TypeError: Если тип `optimization_settings` не соответствует выбранной 
-                       `objective_function`.
-    :raises RuntimeError: Если ни одна особь за все поколения не дала валидного 
-                          результата (fitness = 0 для всей популяции).
+
+    :raises FileNotFoundError: Если файл конфигурации не найден.
+    :raises TypeError: Если тип optimization_settings не соответствует
+                    выбранной целевой функции.
+    :raises NotImplementedError: Если целевая функция не реализована.
+    :raises RuntimeError: Если ни одна особь не дала валидного результата.
     """
+    if not isinstance(threads, int) or threads < 1:
+        raise ValueError("threads должен быть целым числом не меньше 1")
     config_path = Path(__file__).parent / config_filename
     
     if not config_path.exists():
@@ -146,16 +170,22 @@ def launch_ga_optimization(
         
     ga_settings = _load_settings(config_path)['genetic_algorithm']
     
-    pygad_space, gene_types = parse_gene_space(gene_space)
+    pygad_space, gene_types = parse_gene_space(generation_strategy.parameter_space)
 
     if objective_function == ObjectiveFunction.MIN_CRUISE_DRAG:
         if not isinstance(optimization_settings, MinCruiseDragOptSettings):
-            raise TypeError("Несответствие настроек и целевой функции")
+            raise TypeError("Несоответствие настроек и целевой функции")
+    else:
+        raise NotImplementedError(
+            f"Целевая функция {objective_function} не реализована"
+        )
     fitness_func = make_fitness_function(
-        generate_airfoil, optimization_settings, objective_function)
-
+        opt_settings=optimization_settings,
+        objective_function=objective_function,
+        generation_strategy=generation_strategy,
+        deformate_strategy=deformate_strategy
+    )
     # Инициализация PyGAD
-    logger.info("Инициализация Генетического Алгоритма...")
     ga_instance = pygad.GA(
         fitness_func=fitness_func,
         num_genes=len(pygad_space),
@@ -178,25 +208,55 @@ def launch_ga_optimization(
         
         stop_criteria=ga_settings['stop_criteria'],
         random_seed=ga_settings.get('seed'),
-        
-        # parallel_processing=['process', ga_settings['threads']], # Пока выключено
-        logger=logger
+
+        parallel_processing=["thread", threads] if threads > 1 else None,
+
+        save_best_solutions=True,
+    )
+    ga_instance.run()
+
+    # Глобальный победитель
+    best_idx = max(
+        range(len(ga_instance.best_solutions_fitness)),
+        key=lambda i: ga_instance.best_solutions_fitness[i]
     )
 
-    # Запуск оптимизации
-    logger.info("--- СТАРТ ОПТИМИЗАЦИИ ---")
-    ga_instance.run()
-    
-    # Сбор результатов
-    solution, solution_fitness, _ = ga_instance.best_solution()
+    solution = ga_instance.best_solutions[best_idx]
+    solution_fitness = ga_instance.best_solutions_fitness[best_idx]
+
     if solution_fitness <= 0:
-        raise RuntimeError("Ни один расчёт не завершился успешно (fitness = 0): смотрите лог")
+        raise RuntimeError("Ни один расчёт не завершился успешно")
+
     genes = [g.item() if hasattr(g, "item") else g for g in solution]
+
+    _, result = fitness_func.cache[tuple(genes)].result()
+
+    # Формирование отчёта
+    if report_path is not None:
+        generation_results = []
+
+        for solution in ga_instance.best_solutions:
+            key = tuple(
+                g.item() if hasattr(g, "item") else g
+                for g in solution
+            )
+
+            value, generation_result = fitness_func.cache[key].result()
+
+            generation_results.append(
+                generation_result if value > 0 else None
+            )
+
+        generate_ga_report(
+            best_result=result,
+            generation_results=generation_results,
+            objective_function=objective_function,
+            path=Path(report_path)
+        )
 
     return {
         "genes": genes,
-        "airfoil": generate_airfoil(*genes),
         "fitness": solution_fitness,
-        "drag_X": 1.0 / solution_fitness - 1e-6,
-        "ga_instance": ga_instance,
+        "result": result,
+        "ga_instance": ga_instance
     }

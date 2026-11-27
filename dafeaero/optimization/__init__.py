@@ -1,6 +1,12 @@
 from .optimization_definition import (
+    OptimizationType,
     ObjectiveFunction,
-    OptimizationFlapSettings, MinCruiseDragOptSettings, 
+    OptimizationSettings,
+    OptimizationResult,
+    MinCruiseDragOptSettings,
+    MinCruiseDragResult,
+    AirfoilGenerationStrategy,
+    AirfoilDeformationStrategy
 )
 from .genetic_algorithm_optimization.launch_ga_optimization import (
     launch_ga_optimization   

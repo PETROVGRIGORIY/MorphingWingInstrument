@@ -1,11 +1,11 @@
 import math
-
-import pandas as pd
+from itertools import product
 
 from ...facade.airfoil import Airfoil
 from ... import aerodynamics, aeroconsts
-from ..optimization_definition import MinCruiseDragOptSettings, MinCruiseDragResult
-
+from ..optimization_definition import (
+    MinCruiseDragOptSettings, MinCruiseDragResult, AirfoilDeformationStrategy
+)
 # Константы сходимости
 STALL_CL_ITERATIONS = 5
 STALL_CL_TOLERANCE = 1e-3
@@ -42,110 +42,118 @@ def _calc_stall_cl(
 
 
 def _calc_cruise_drag(
-    af: "Airfoil", 
-    settings: MinCruiseDragOptSettings, 
-    cl_max_flap: float
-) -> float | None:
-    """Считает размерное сопротивление X (Н) на крейсерской скорости."""
-    # 1. Находим площадь крыла и хорду (исходя из взлетного режима)
-    wing_area = (2 * settings.mass * aeroconsts.g) / (aeroconsts.rho0 * settings.v_stall**2 * cl_max_flap)
+    af: Airfoil,
+    settings: MinCruiseDragOptSettings,
+    cl_max_stall: float
+) -> tuple[float, float] | None:
+    """Вычисляет размерное сопротивление и параметр Cd_cruise / Cl_max."""
+
+    wing_area = (
+        2 * settings.mass * aeroconsts.g
+        / (aeroconsts.rho0 * settings.v_stall**2 * cl_max_stall)
+    )
+
     chord = math.sqrt(wing_area / settings.aspect_ratio)
-    
-    # 2. Потребный Cl на крейсере (вес тот же, площадь та же)
-    cl_cruise = (2 * settings.mass * aeroconsts.g) / (aeroconsts.rho0 * settings.v_cruise**2 * wing_area)
-    
+
+    cl_cruise = (
+        2 * settings.mass * aeroconsts.g
+        / (aeroconsts.rho0 * settings.v_cruise**2 * wing_area)
+    )
+
     try:
-        # 3. Получаем поляру чистого профиля на крейсерском Re
         re_cruise = aerodynamics.re(settings.v_cruise, chord)
-        mach_cruise = aerodynamics.mach(settings.v_cruise, aeroconsts.a0)
+        mach_cruise = aerodynamics.mach(
+            settings.v_cruise, aeroconsts.a0
+        )
+
         polar = af.polar(re_cruise, mach_cruise)
-        
+
         if cl_cruise > polar.cl_max:
-            return None  # Сваливание на крейсере
-            
+            return None
+
         cd_profile = polar.cd_at_cl(cl_cruise)
+
     except ValueError:
         return None
-        
-    # 4. Суммарный коэффициент сопротивления (профиль + индуктивное)
-    cd_induced = (cl_cruise**2) / (math.pi * settings.aspect_ratio * settings.oswald_efficiency)
+
+    cd_induced = cl_cruise**2 / (
+        math.pi * settings.aspect_ratio
+        * settings.oswald_efficiency
+    )
+
     cd_total = cd_profile + cd_induced
-    
-    # 5. Размерное сопротивление в Ньютонах (X = q * S * Cd)
+
     dynamic_pressure = 0.5 * aeroconsts.rho0 * settings.v_cruise**2
+
     drag_X = dynamic_pressure * wing_area * cd_total
-    
-    return drag_X
+    cd_clmax_ratio = cd_total / cl_max_stall
+
+    return drag_X, cd_clmax_ratio
 
 
 def evaluate_airfoil_drag(
-    af: "Airfoil", 
-    settings: MinCruiseDragOptSettings
-    ) -> MinCruiseDragResult:
-    """Целевая функция для оценки сопротивления профиля на крейсере.
-    
-    Перебирает положения шарнира и углы закрылка, находит конфигурацию
-    с максимальным Cl_max, после чего вычисляет сопротивление на крейсере.
-    """
-    scan_data = []
-    best_cl_max = -1.0
-    best_flap_angle = None
-    best_hinge_x = None
+    af: Airfoil,
+    settings: MinCruiseDragOptSettings,
+    deformate_strategy: AirfoilDeformationStrategy | None = None
+) -> MinCruiseDragResult:
+    """Находит деформацию, минимизирующую сопротивление на крейсере."""
 
-    # 1. Перебор конфигураций закрылка (шарниры x углы)
-    flap = settings.flap_settings
-    hinges = flap.hinge_positions if flap is not None else [0.0]
-    angles = flap.angles if flap is not None else [0]
-    for hinge_x in hinges:
-        for angle in angles:
-            try:
-                # Если угол 0, закрылок не отклоняем (берем чистый профиль)
-                flapped_af = af.with_flap(angle, hinge_x) if angle != 0 else af
-                
-                cl_max, re_stall = _calc_stall_cl(
-                    flapped_af, 
-                    settings.v_stall, 
-                    settings.aspect_ratio, 
-                    settings.mass
-                )
-                
-                # Сохраняем точку в таблицу
-                scan_data.append({
-                    "Hinge_x/c": hinge_x,
-                    "Flap_Angle_deg": angle,
-                    "Cl_max": cl_max,
-                    "Re_stall": re_stall
-                })
-                
-                # Обновляем рекорд
-                if cl_max > best_cl_max:
-                    best_cl_max = cl_max
-                    best_flap_angle = angle
-                    best_hinge_x = hinge_x
-                    
-            except Exception:
-                # Если XFOIL упал на этой конфигурации, пропускаем её
+    best_drag_X = None
+    best_cd_clmax_ratio = None
+    best_cl_max = None
+    best_deformation = None
+
+    parameter_space = (
+        deformate_strategy.parameter_space
+        if deformate_strategy is not None
+        else ()
+    )
+
+    for params in product(*parameter_space):
+        try:
+            # Деформация профиля
+            deformed_af = (
+                deformate_strategy.deformate_airfoil(af, *params)
+                if deformate_strategy is not None
+                else af
+            )
+
+            # Расчёт деформированного профиля на сваливании
+            cl_max, _ = _calc_stall_cl(
+                deformed_af,
+                settings.v_stall,
+                settings.aspect_ratio,
+                settings.mass
+            )
+
+            if not math.isfinite(cl_max) or cl_max <= 0:
                 continue
 
-    # Превращаем список словарей в DataFrame
-    scan_df = pd.DataFrame(scan_data)
+            # Расчёт основного профиля на крейсере
+            result = _calc_cruise_drag(af, settings, cl_max)
 
-    # 2. Если ни одна конфигурация не посчиталась (XFOIL везде упал)
-    if scan_df.empty:
-        return MinCruiseDragResult(
-            airfoil=af, drag_X=None, best_flap_angle=None, 
-            best_hinge_x=None, best_cl_max=None, scan_df=scan_df
-        )
+            if result is None:
+                continue
 
-    # 3. Считаем сопротивление на крейсере для лучшей найденной конфигурации
-    drag_X = _calc_cruise_drag(af, settings, best_cl_max)
-    
-    # 4. Возвращаем результат
+            drag_X, cd_clmax_ratio = result
+
+            if not math.isfinite(drag_X) or drag_X <= 0:
+                continue
+
+            # Обновление оптимальной конфигурации
+            if best_drag_X is None or drag_X < best_drag_X:
+                best_drag_X = drag_X
+                best_cd_clmax_ratio = cd_clmax_ratio
+                best_cl_max = cl_max
+                best_deformation = params
+
+        except Exception:
+            continue
+
     return MinCruiseDragResult(
-        airfoil=af, 
-        drag_X=drag_X, 
-        best_flap_angle=best_flap_angle, 
-        best_hinge_x=best_hinge_x, 
-        best_cl_max=best_cl_max, 
-        scan_df=scan_df
+        airfoil=af,
+        drag_X=best_drag_X,
+        cd_clmax_ratio=best_cd_clmax_ratio,
+        best_cl_max=best_cl_max,
+        best_deformation=best_deformation
     )
